@@ -21,6 +21,28 @@ what I directed, what I caught, and why.
 - **The D1 spike de-risked Deno sharing first.** I time-boxed it to 20 minutes with a Node
   fallback; it passed in about 5. (Phase 2)
 
+- **A test failure that was the test's fault.** "Sam sees no meeting points" failed because
+  another test file had made Sam the creator of some meetups, and creators do see their own.
+  The database was right and the test's assumption was wrong, so I scoped the check to the
+  meetup under test rather than weakening the rule. (Phase 3)
+- **Single function vs four (D1).** I changed this without asking first and the owner
+  questioned it. Real gains: one `deno.json` and one warm worker. Shared code alone isn't a
+  reason (`_shared/` works with four). Cost: no per-endpoint deploy, logs or config. (Phase 2–3)
+
+## Tests (48, Vitest, real Supabase Auth sessions, real API)
+- The four personas on the seeded Saturday loop: outsider, member without RSVP, attendee, creator.
+- Multi-group: Riley gets exact for Saturday and approximate for Weeknight and Riverside; an RSVP
+  to one meetup unlocks only that one; raw map payloads scanned for exact values.
+- Writes: past or current start rejected; strict body; creator-only cancel (404 outsider, 403
+  member); cancelled meetup takes no RSVP; reopening fails even for the DB owner (trigger);
+  withdraw from a cancelled meetup works; a started meetup (set up as owner) takes no RSVP;
+  RSVP is idempotent.
+- Bypass: every direct table write and RPC call with a user session is `42501`; helpers are
+  not exposed; `home_lat` is denied for all, even on your own row.
+- **Automatic leak scan:** every response body in every test file is checked for all 16
+  seeded home coordinates.
+- Re-runnable without a reset: mutation tests create their own meetups.
+
 ## Design choices worth explaining
 - **One contract file** (`packages/contracts`). The server validates writes with it, and the
   app parses reads with it. A discriminated union, `exact | approximate`, for the meeting point

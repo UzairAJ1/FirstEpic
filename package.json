@@ -9,7 +9,9 @@
   "scripts": {
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
-    "db:stop": "supabase stop"
+    "db:stop": "supabase stop",
+    "functions": "supabase functions serve",
+    "test": "npm test -w @altair/tests"
   },
   "devDependencies": {
     "supabase": "^2.122.0"
