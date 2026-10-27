@@ -92,10 +92,32 @@ what I directed, what I caught, and why.
 - **Outsider opening a meetup link:** RLS returns no row, and the app shows "This meetup isn't
   available", the same as for a deleted meetup.
 
+## Bonus (a): edit a meetup
+- `PATCH /meetups/:id`, same Zod layer; `update_meetup()` is service_role-only like the
+  other writes. No UPDATE grant for users (tested: direct UPDATE and RPC are both `42501`).
+- **Partial edits:** send only what changed. The future-start rule applies only when the
+  start time changes. A started meetup can still get a title fix. Checked twice: Zod at the
+  endpoint, and the DB function behind it (tested by calling it as owner).
+- **Cancelled can't be edited:** 409 from the function, and the existing trigger blocks any
+  writer.
+- **Moving the point creates a new approximate area**, but only if the coordinates really
+  changed. Re-saving the same point keeps the old circle, so repeated saves can't be averaged
+  back to the exact spot. Tested.
+- One shared `FutureTimestamp` schema for create and edit, so the rule can't drift.
+- The create and edit screens share one `MeetupForm` component.
+- 10 tests in `edit.test.ts` (58 total).
+
 ## Assumptions (spec is silent)
 - A member can withdraw an RSVP after the meetup has started.
 - The creator can cancel after the meetup has started.
 - Cancelling twice, or withdrawing without an RSVP, is a quiet no-op (like RSVPing twice).
+- Edit: a started meetup can still be edited as long as the start time isn't changed.
+- Edit: existing RSVPs are kept when the time or place changes.
+
+## More pushback candidates
+- **Editing time or place under existing RSVPs.** People said yes to a specific time and
+  place. Without notifications (out of scope), attendees won't know it moved. A product would
+  either notify them or reset RSVPs on a material change.
 
 ## Pushback / refuse-first candidates
 - **Pushback:** RSVP-then-withdraw reveals the exact point to any member. Approximate is

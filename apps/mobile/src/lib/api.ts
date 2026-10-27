@@ -3,8 +3,10 @@ import {
   CancelMeetupResponse,
   CreateMeetupResponse,
   RsvpResponse,
+  UpdateMeetupResponse,
   type ApiErrorCode,
   type CreateMeetupInput,
+  type UpdateMeetupInput,
 } from "@altair/contracts";
 import type { z } from "zod";
 import { supabase, SUPABASE_URL } from "./supabase";
@@ -21,7 +23,7 @@ export class ApiRequestError extends Error {
 }
 
 async function call<S extends z.ZodType>(
-  method: "POST" | "DELETE",
+  method: "POST" | "PATCH" | "DELETE",
   path: string,
   response: S,
   body?: unknown,
@@ -55,6 +57,7 @@ async function call<S extends z.ZodType>(
 
 export const api = {
   createMeetup: (input: CreateMeetupInput) => call("POST", "", CreateMeetupResponse, input),
+  updateMeetup: (id: string, input: UpdateMeetupInput) => call("PATCH", `/${id}`, UpdateMeetupResponse, input),
   cancelMeetup: (id: string) => call("POST", `/${id}/cancel`, CancelMeetupResponse),
   rsvp: (id: string) => call("POST", `/${id}/rsvp`, RsvpResponse),
   withdrawRsvp: (id: string) => call("DELETE", `/${id}/rsvp`, RsvpResponse),

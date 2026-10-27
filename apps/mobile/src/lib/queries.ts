@@ -6,6 +6,7 @@ import {
   Meetup,
   MEETUP_COLUMNS,
   type CreateMeetupInput,
+  type UpdateMeetupInput,
 } from "@altair/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
@@ -104,6 +105,14 @@ export function useSetRsvp(id: string) {
   const invalidate = useInvalidateMeetup();
   return useMutation({
     mutationFn: (attending: boolean) => (attending ? api.rsvp(id) : api.withdrawRsvp(id)),
+    onSuccess: () => invalidate(id),
+  });
+}
+
+export function useUpdateMeetup(id: string) {
+  const invalidate = useInvalidateMeetup();
+  return useMutation({
+    mutationFn: (input: UpdateMeetupInput) => api.updateMeetup(id, input),
     onSuccess: () => invalidate(id),
   });
 }

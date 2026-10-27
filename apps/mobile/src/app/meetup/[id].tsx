@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Alert, ScrollView, Text, View } from "react-native";
 import { MeetupMap } from "@/components/MeetupMap";
 import { Badge, Button, Empty, ErrorState, FieldError, formatWhen, Loading, styles } from "@/components/ui";
@@ -59,7 +59,14 @@ export default function MeetupDetail() {
         <Button label="Withdraw RSVP" variant="secondary" onPress={() => rsvp.mutate(false)} busy={rsvp.isPending} />
       )}
       {m.isCreator && !cancelled && (
-        <Button label="Cancel meetup" variant="danger" onPress={confirmCancel} busy={cancel.isPending} />
+        <>
+          <Button
+            label="Edit meetup"
+            variant="secondary"
+            onPress={() => router.push({ pathname: "/edit/[id]", params: { id: m.id } })}
+          />
+          <Button label="Cancel meetup" variant="danger" onPress={confirmCancel} busy={cancel.isPending} />
+        </>
       )}
 
       <Text style={[styles.title, { marginTop: 8 }]}>Going ({m.attendeeCount})</Text>
