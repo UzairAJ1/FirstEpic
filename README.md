@@ -11,6 +11,7 @@ It also has both bonus parts: meetup editing, and a live-map sample.
 
 - **Note** (decisions, what I directed and caught, pushback): [docs/NOTE.md](docs/NOTE.md)
 - **Decision records:** [docs/decisions.md](docs/decisions.md)
+- **Bonus work** (edit a meetup; live map sample): [docs/BONUS.md](docs/BONUS.md)
 - **Live map latency / battery / load-test note:** [docs/live-map-note.md](docs/live-map-note.md)
 - **AI session logs:** [ai-logs/](ai-logs/)
 
