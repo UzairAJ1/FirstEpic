@@ -72,8 +72,10 @@ local keys. Studio, the database UI, is at http://127.0.0.1:54323.
 npx supabase functions serve
 ```
 
-It serves `http://127.0.0.1:54321/functions/v1/meetups`. If you restart the stack, start this
-again.
+It serves `http://127.0.0.1:54321/functions/v1/meetups` with live logs and hot reload. With this
+CLI version, `supabase start` already serves the functions too, so this step is for logs and code
+changes. If a `functions serve` process exits, it stops the functions container with it; start
+it again, or run `npx supabase stop` and then `npx supabase start`.
 
 ### 4. Tests (terminal B)
 
@@ -151,6 +153,17 @@ password is `altair-fixture-pass`.
 4. Sign in as **Avery**. *Saturday morning loop* shows **Edit** and **Cancel**, which only the
    creator sees.
 
+### See the outsider rule without the app
+
+```
+npm run outsider-demo
+```
+
+This prints, through the real API, what Taylor (outsider) and Sam (member) each get for
+"Saturday morning loop". Taylor gets empty meetup, attendee and meeting-point results and a 404
+from the endpoint. Sam sees the meetup with an approximate area only. Both are denied
+`home_lat` and direct table writes.
+
 ### 6. Bonus (b): live map (terminal D, optional)
 
 ```
@@ -174,7 +187,7 @@ before going higher.
 |---|---|
 | `docker: command not found` from `npx supabase ...` (Windows) | Docker Desktop's `resources\bin` isn't on this terminal's PATH. Open a new terminal; if VS Code started before Docker was installed, sign out and back in to Windows. |
 | App: "Can't reach the server", or Expo Go can't connect | On the phone's browser, open `http://<LAN IP>:8081/status`. If it doesn't load: check the same Wi-Fi, a Private network profile, and the firewall rule below. |
-| Writes fail (create, RSVP, cancel) but lists load | `npx supabase functions serve` isn't running. Start it (step 3). |
+| Writes fail (create, RSVP, cancel) but lists load; the endpoint returns 503 | The functions container is down, usually after a `functions serve` process exited. Run `npx supabase functions serve` again (step 3). |
 | Live map stays "Connecting…" | Realtime starts a few seconds after the rest of the stack; wait and reopen the screen. |
 | `.env` change has no effect | Restart Expo with `--clear`. |
 

@@ -18,6 +18,9 @@ supabase/.branches/
 supabase/.temp/
 supabase/functions/.env
 
+# Personal recording plan (not part of the submission)
+/recording-plan.md
+
 # OS / editors
 .DS_Store
 Thumbs.db
