@@ -29,17 +29,34 @@ export const MeetingPointInput = z.strictObject({
   lng: Longitude,
 });
 
+const Title = z.string().trim().min(1).max(80);
+
+// Must be in the future at the moment it's parsed. The server parses on
+// every request, so a stale client clock can't get a past start through.
+const FutureTimestamp = Timestamp.refine((v) => Date.parse(v) > Date.now(), {
+  message: "Start time must be in the future",
+});
+
 export const CreateMeetupInput = z.strictObject({
   groupId: Id,
-  title: z.string().trim().min(1).max(80),
-  // Must be in the future at the moment it's parsed. The server parses on
-  // every request, so a stale client clock can't get a past start through.
-  startsAt: Timestamp.refine((v) => Date.parse(v) > Date.now(), {
-    message: "Start time must be in the future",
-  }),
+  title: Title,
+  startsAt: FutureTimestamp,
   meetingPoint: MeetingPointInput,
 });
 export type CreateMeetupInput = z.infer<typeof CreateMeetupInput>;
+
+// Bonus: edit. Send only what changed; a start time, when sent, must be in
+// the future (so clients must omit an unchanged start time).
+export const UpdateMeetupInput = z
+  .strictObject({
+    title: Title.optional(),
+    startsAt: FutureTimestamp.optional(),
+    meetingPoint: MeetingPointInput.optional(),
+  })
+  .refine((v) => Object.values(v).some((x) => x !== undefined), {
+    message: "Nothing to update",
+  });
+export type UpdateMeetupInput = z.infer<typeof UpdateMeetupInput>;
 
 // Cancel, RSVP and withdraw all address one meetup by id (in the path).
 export const MeetupIdParams = z.object({ meetupId: Id });
@@ -50,6 +67,9 @@ export type MeetupIdParams = z.infer<typeof MeetupIdParams>;
 // ---------------------------------------------------------------------
 export const CreateMeetupResponse = z.object({ id: Id });
 export type CreateMeetupResponse = z.infer<typeof CreateMeetupResponse>;
+
+export const UpdateMeetupResponse = z.object({ id: Id });
+export type UpdateMeetupResponse = z.infer<typeof UpdateMeetupResponse>;
 
 export const CancelMeetupResponse = z.object({
   id: Id,

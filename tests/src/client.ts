@@ -56,7 +56,7 @@ export type ApiResult = { status: number; body: any };
 
 export async function api(
   session: Session | null,
-  method: "POST" | "DELETE",
+  method: "POST" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<ApiResult> {

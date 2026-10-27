@@ -1,6 +1,7 @@
 // The write endpoints for meetups. Every write in the slice goes through here:
 //
 //   POST   /meetups                 create a meetup
+//   PATCH  /meetups/:id             edit (creator only; bonus)
 //   POST   /meetups/:id/cancel      cancel (creator only)
 //   POST   /meetups/:id/rsvp        RSVP (idempotent)
 //   DELETE /meetups/:id/rsvp        withdraw an RSVP (idempotent)
@@ -17,6 +18,8 @@ import {
   CreateMeetupResponse,
   MeetupIdParams,
   RsvpResponse,
+  UpdateMeetupInput,
+  UpdateMeetupResponse,
 } from "../../../packages/contracts/src/index.ts";
 import { errorResponse, fromDb, HttpError, json, parse, readJson } from "./http.ts";
 
@@ -52,6 +55,21 @@ async function createMeetup(userId: string, body: unknown): Promise<Response> {
   return json(201, CreateMeetupResponse.parse({ id: data }));
 }
 
+async function updateMeetup(userId: string, meetupId: string, body: unknown): Promise<Response> {
+  const input = parse(UpdateMeetupInput, body);
+  const { error } = await admin.rpc("update_meetup", {
+    p_user_id: userId,
+    p_meetup_id: meetupId,
+    p_title: input.title ?? null,
+    p_starts_at: input.startsAt ?? null,
+    p_place_name: input.meetingPoint?.name ?? null,
+    p_lat: input.meetingPoint?.lat ?? null,
+    p_lng: input.meetingPoint?.lng ?? null,
+  });
+  if (error) throw fromDb(error);
+  return json(200, UpdateMeetupResponse.parse({ id: meetupId }));
+}
+
 async function cancelMeetup(userId: string, meetupId: string): Promise<Response> {
   const { error } = await admin.rpc("cancel_meetup", { p_user_id: userId, p_meetup_id: meetupId });
   if (error) throw fromDb(error);
@@ -77,6 +95,11 @@ Deno.serve(async (req) => {
 
     if (route.length === 0 && req.method === "POST") {
       return await createMeetup(userId, await readJson(req));
+    }
+
+    if (route.length === 1 && req.method === "PATCH") {
+      const { meetupId } = parse(MeetupIdParams, { meetupId: route[0] });
+      return await updateMeetup(userId, meetupId, await readJson(req));
     }
 
     if (route.length === 2) {
