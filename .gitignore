@@ -20,6 +20,7 @@ supabase/functions/.env
 
 # Personal recording plan (not part of the submission)
 /recording-plan.md
+/recording-script.md
 
 # OS / editors
 .DS_Store
