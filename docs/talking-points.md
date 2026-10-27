@@ -29,6 +29,16 @@ what I directed, what I caught, and why.
   questioned it. Real gains: one `deno.json` and one warm worker. Shared code alone isn't a
   reason (`_shared/` works with four). Cost: no per-endpoint deploy, logs or config. (Phase 2–3)
 
+- **The client cache leaked across accounts.** React Query kept the previous user's meetups
+  after sign-out, so the next account on the same phone would briefly see them. The cache is
+  cleared whenever the signed-in user id changes. (Phase 4)
+- **Two copies of React in the monorepo.** expo-doctor found 19.3.0 (app) and 19.3.1 (hoisted
+  to the root), which causes "Invalid hook call" at runtime. Fixed with an npm `overrides` entry;
+  a plain reinstall didn't apply it, so I removed the lockfile and reinstalled clean. (Phase 4)
+- **Checked the date picker API instead of trusting memory.** In datetimepicker v9 `onChange`
+  is deprecated in favour of `onValueChange` and `onDismiss`. Read the installed `.d.ts` because
+  the Expo docs page didn't say. (Phase 4)
+
 ## Tests (48, Vitest, real Supabase Auth sessions, real API)
 - The four personas on the seeded Saturday loop: outsider, member without RSVP, attendee, creator.
 - Multi-group: Riley gets exact for Saturday and approximate for Weeknight and Riverside; an RSVP
@@ -63,6 +73,17 @@ what I directed, what I caught, and why.
   the DB function plus triggers check data rules atomically and can't be bypassed.
 - **Area stored once per meetup**, so repeated reads can't be averaged back to the exact point.
 - **Helpers live in a `private` schema** that PostgREST doesn't expose.
+
+- **App writes never touch the Supabase client.** `api.ts` calls the Edge Function with the
+  session token. Reads use the client against the views under RLS.
+- **The create form validates with the same `CreateMeetupInput` as the server**, so the user
+  sees errors instantly. The server still re-validates and shows its own errors (e.g. past
+  start) field by field.
+- **The map renders the server's union** (pin or circle) and remounts when it changes, so after
+  an RSVP the camera moves to the exact pin. `showsUserLocation` is off. The picker map opens on
+  the town reference point, never on a home location.
+- **Outsider opening a meetup link:** RLS returns no row, and the app shows "This meetup isn't
+  available", the same as for a deleted meetup.
 
 ## Assumptions (spec is silent)
 - A member can withdraw an RSVP after the meetup has started.
