@@ -151,23 +151,38 @@ insert into public.group_memberships (group_id, user_id) values
 -- interval), so the reference meetups are always upcoming.
 -- =====================================================================
 
--- insert into public.meetups
---   (id, group_id, created_by, title, starts_at,
---    meeting_point_name, meeting_point_lat, meeting_point_lng)
--- values
---   ('c3000000-0000-4000-8000-000000000001', 'b2000000-0000-4000-8000-000000000001', 'a1000000-0000-4000-8000-000000000001',
---    'Saturday morning loop', now() + interval '7 days',
---    'North gate, Linden Park', 40.012046, -99.984517),
---   ('c3000000-0000-4000-8000-000000000002', 'b2000000-0000-4000-8000-000000000001', 'a1000000-0000-4000-8000-000000000002',
---    'Weeknight short walk', now() + interval '10 days',
---    'Front steps, Elm Avenue Library', 40.003318, -99.979762),
---   ('c3000000-0000-4000-8000-000000000003', 'b2000000-0000-4000-8000-000000000002', 'a1000000-0000-4000-8000-000000000005',
---    'Riverside sunrise walk', now() + interval '8 days',
---    'Boathouse lot, Riverside Path', 39.985239, -100.009683);
+-- Adapted to this schema: the exact meeting point lives in
+-- meetup_meeting_points, and meetups stores only the approximate area,
+-- computed by the same function create_meetup() uses.
+with reference (id, group_id, created_by, title, starts_at, place_name, lat, lng) as (
+  values
+    ('c3000000-0000-4000-8000-000000000001'::uuid, 'b2000000-0000-4000-8000-000000000001'::uuid, 'a1000000-0000-4000-8000-000000000001'::uuid,
+     'Saturday morning loop', now() + interval '7 days',
+     'North gate, Linden Park', 40.012046, -99.984517),
+    ('c3000000-0000-4000-8000-000000000002', 'b2000000-0000-4000-8000-000000000001', 'a1000000-0000-4000-8000-000000000002',
+     'Weeknight short walk', now() + interval '10 days',
+     'Front steps, Elm Avenue Library', 40.003318, -99.979762),
+    ('c3000000-0000-4000-8000-000000000003', 'b2000000-0000-4000-8000-000000000002', 'a1000000-0000-4000-8000-000000000005',
+     'Riverside sunrise walk', now() + interval '8 days',
+     'Boathouse lot, Riverside Path', 39.985239, -100.009683)
+),
+new_meetups as (
+  insert into public.meetups
+    (id, group_id, created_by, title, starts_at, area_lat, area_lng, area_radius_m)
+  select r.id, r.group_id, r.created_by, r.title, r.starts_at,
+         a.area_lat, a.area_lng, a.area_radius_m
+  from reference r
+  cross join lateral private.approximate_area(r.lat, r.lng) a
+  returning id
+)
+insert into public.meetup_meeting_points (meetup_id, name, lat, lng)
+select r.id, r.place_name, r.lat, r.lng
+from reference r
+join new_meetups m on m.id = r.id;
 
--- insert into public.rsvps (meetup_id, user_id) values
---   ('c3000000-0000-4000-8000-000000000001', 'a1000000-0000-4000-8000-000000000002'),   -- Jordan Price -> Saturday morning loop
---   ('c3000000-0000-4000-8000-000000000001', 'a1000000-0000-4000-8000-000000000004'),   -- Riley Chen   -> Saturday morning loop
---   ('c3000000-0000-4000-8000-000000000003', 'a1000000-0000-4000-8000-000000000006');   -- Casey Moreno -> Riverside sunrise walk
---
+insert into public.rsvps (meetup_id, user_id) values
+  ('c3000000-0000-4000-8000-000000000001', 'a1000000-0000-4000-8000-000000000002'),   -- Jordan Price -> Saturday morning loop
+  ('c3000000-0000-4000-8000-000000000001', 'a1000000-0000-4000-8000-000000000004'),   -- Riley Chen   -> Saturday morning loop
+  ('c3000000-0000-4000-8000-000000000003', 'a1000000-0000-4000-8000-000000000006');   -- Casey Moreno -> Riverside sunrise walk
+
 -- "Weeknight short walk" intentionally has no RSVPs (an empty attendee list).
