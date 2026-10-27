@@ -4,11 +4,11 @@
 // group's private Realtime channel, signed in as a member of that group.
 // Run with Node 24+ (native TypeScript):
 //
-//   node tools/live-sim.ts                         25 walkers, 1 Hz, Maple Street Walkers
+//   node tools/live-sim.ts                         25 walkers per group, 1 Hz, both groups
 //   node tools/live-sim.ts --walkers 200 --clients 20 --measure --duration 60
 //
 // Options:
-//   --group maple|riverside   which group's channel (default maple)
+//   --group maple|riverside|all  which group's channel (default all; with --measure, maple)
 //   --as <persona>            member to sign in as (default avery; riverside: morgan)
 //   --walkers N               simulated walkers (default 25)
 //   --hz R                    position updates per walker per second (default 1)
@@ -35,16 +35,19 @@ function option(name: string, fallback: string): string {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 && process.argv[i + 1] && !process.argv[i + 1].startsWith("--") ? process.argv[i + 1] : fallback;
 }
-const groupKey = option("group", "maple") as keyof typeof GROUPS;
-const group = GROUPS[groupKey];
-if (!group) throw new Error(`--group must be one of: ${Object.keys(GROUPS).join(", ")}`);
-const sender = option("as", group.sender);
+const measure = process.argv.includes("--measure");
+// Demo default: feed every group, so the live map works for any persona. Load
+// probes default to one group so the numbers stay comparable.
+const groupKey = option("group", measure ? "maple" : "all");
+const groups =
+  groupKey === "all" ? Object.values(GROUPS) : [GROUPS[groupKey as keyof typeof GROUPS]].filter(Boolean);
+if (groups.length === 0) throw new Error(`--group must be one of: ${Object.keys(GROUPS).join(", ")}, all`);
+const senderOverride = process.argv.includes("--as") ? option("as", "") : null;
 const walkerCount = Number(option("walkers", "25"));
 const hz = Number(option("hz", "1"));
 const clientCount = Math.max(1, Math.min(Number(option("clients", "1")), walkerCount));
-const measure = process.argv.includes("--measure");
 const duration = Number(option("duration", "0"));
-const topic = `live:group:${group.id}`;
+const topicOf = (g: (typeof groups)[number]) => `live:group:${g.id}`;
 
 // ---------------------------------------------------------------------
 // Walkers: each loops a circle somewhere in the fictional town at walking
@@ -98,7 +101,7 @@ function subscribe(channel: RealtimeChannel): Promise<void> {
     channel.subscribe((status, err) => {
       if (status === "SUBSCRIBED") resolve();
       else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        reject(new Error(`${status} joining ${topic}: ${err?.message ?? "not authorized?"}`));
+        reject(new Error(`${status} joining ${channel.topic}: ${err?.message ?? "not authorized?"}`));
       }
     });
   });
@@ -111,7 +114,9 @@ const stats = { sent: 0, sendErrors: 0, received: 0, latencies: [] as number[] }
 const timers: NodeJS.Timeout[] = [];
 const clients: SupabaseClient[] = [];
 
-async function main() {
+async function runGroup(group: (typeof groups)[number]) {
+  const topic = topicOf(group);
+  const sender = senderOverride ?? group.sender;
   console.log(
     `live-sim: ${walkerCount} walkers @ ${hz} Hz over ${clientCount} connection(s) as ${sender} on ${topic}` +
       (measure ? ", measuring" : ""),
@@ -153,6 +158,10 @@ async function main() {
       timers.push(setTimeout(tick, Math.random() * periodMs));
     }
   }
+}
+
+async function main() {
+  for (const group of groups) await runGroup(group);
 
   let last = { sent: 0, received: 0, at: Date.now() };
   timers.push(

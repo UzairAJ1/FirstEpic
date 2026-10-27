@@ -115,6 +115,10 @@ Measured with `npm run live-sim -- --measure` (full table in the note):
   is on ingress.
 
 ### Try it
-1. `npm run live-sim` (leave it running).
-2. In the app, sign in as **Sam** → **Live map (demo)**.
-3. Zoom in and out. As **Morgan** (Riverside), the Maple live map says you're not a member.
+1. `npm run live-sim` (leave it running). It feeds both groups' channels.
+2. In the app, sign in as any member, such as **Sam** → **Live map (demo)**.
+3. Zoom in and out and watch *rendered* drop while *known* stays the same. **Show all** reframes
+   the map on every walker.
+
+Positions are broadcasts, not stored rows, so they aren't seed data: avatars appear only while
+the simulator runs, and the screen says so when nothing is arriving.

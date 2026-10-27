@@ -7,7 +7,7 @@ import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, type Region } from "react-native-maps";
-import { styles as ui } from "@/components/ui";
+import { Button, styles as ui } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
 
 const RENDER_FPS = 15; // smooth enough for walking speed; 4x fewer frames than 60
@@ -51,6 +51,7 @@ function inView(lat: number, lng: number, r: Region) {
 
 export default function LiveMap() {
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
+  const map = useRef<MapView>(null);
   const tracks = useRef(new Map<string, Track>());
   const region = useRef<Region>(TOWN);
   const received = useRef(0);
@@ -132,9 +133,33 @@ export default function LiveMap() {
     }, [groupId, appActive]),
   );
 
+  // Frame the map on every known walker (handy after zooming away from them).
+  const showAll = () => {
+    const points = [...tracks.current.values()].map((t) => {
+      const last = t.samples[t.samples.length - 1];
+      return { latitude: last.lat, longitude: last.lng };
+    });
+    if (points.length === 0) return;
+    map.current?.fitToCoordinates(points, {
+      edgePadding: { top: 160, right: 40, bottom: 100, left: 40 },
+      animated: true,
+    });
+  };
+
+  // Say why the map is empty instead of leaving a blank map.
+  const hint =
+    status !== "live"
+      ? null
+      : hud.known === 0
+        ? "No positions on this group's channel yet. On the laptop, run: npm run live-sim"
+        : rendered.length === 0
+          ? "All walkers are outside the view. Tap Show all."
+          : null;
+
   return (
     <View style={ui.screen}>
       <MapView
+        ref={map}
         style={StyleSheet.absoluteFill}
         initialRegion={TOWN}
         showsUserLocation={false}
@@ -152,26 +177,39 @@ export default function LiveMap() {
         <Text style={local.hudText}>
           {hud.known} walkers known · {rendered.length} rendered (in view) · {hud.perSec} msg/s
         </Text>
+        {hint ? <Text style={local.hudWarn}>{hint}</Text> : null}
         <Text style={local.hudHint}>Simulated walkers (tools/live-sim.ts). Zoom in to see culling.</Text>
       </View>
+      {hud.known > 0 ? (
+        <View style={local.actions}>
+          <Button label="Show all" variant="secondary" onPress={showAll} />
+        </View>
+      ) : null}
     </View>
   );
 }
 
 // Custom marker views are rasterized on Android; keep tracksViewChanges on
-// just long enough to draw once, then off so moving the marker doesn't
-// re-render the view every frame.
+// until the view has laid out and drawn, then off so moving the marker doesn't
+// re-render the view every frame. Turning it off before the first draw leaves
+// an invisible (blank) bitmap.
 function Avatar({ name, latitude, longitude }: { name: string; latitude: number; longitude: number }) {
   const [tracking, setTracking] = useState(true);
+  const [laidOut, setLaidOut] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setTracking(false), 500);
+    if (!laidOut) return;
+    const t = setTimeout(() => setTracking(false), 1000);
     return () => clearTimeout(t);
-  }, []);
+  }, [laidOut]);
   const initials = name.replace(/^Walker\s*/, "W").slice(0, 3);
   const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 0);
   return (
     <Marker coordinate={{ latitude, longitude }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={tracking}>
-      <View style={[local.avatar, { backgroundColor: `hsl(${hue}, 55%, 45%)` }]}>
+      <View
+        collapsable={false}
+        onLayout={() => setLaidOut(true)}
+        style={[local.avatar, { backgroundColor: `hsl(${hue}, 55%, 45%)` }]}
+      >
         <Text style={local.avatarText}>{initials}</Text>
       </View>
     </Marker>
@@ -191,6 +229,8 @@ const local = StyleSheet.create({
   },
   hudText: { fontSize: 14, fontWeight: "600", color: "#1d232b" },
   hudHint: { fontSize: 12, color: "#5b6673" },
+  hudWarn: { fontSize: 13, fontWeight: "600", color: "#a15c00" },
+  actions: { position: "absolute", right: 12, bottom: 28 },
   avatar: {
     width: 30,
     height: 30,

@@ -171,9 +171,12 @@ from the endpoint. Sam sees the meetup with an approximate area only. Both are d
 npm run live-sim
 ```
 
-This broadcasts 25 **simulated** walkers on Maple Street Walkers' private channel. In the app,
-as a Maple member such as Sam, tap **Live map (demo)**. Zoom in to see culling: "known" stays the
-same while "rendered" drops. As Morgan, a non-member, the screen says you're not a member.
+This broadcasts 25 **simulated** walkers on each group's private channel (both groups, 50 msg/s
+in total). Positions are live broadcasts, not stored rows, so there is no seed data for them:
+the avatars appear only while the simulator runs. In the app, as any member (for example Sam),
+tap **Live map (demo)**. Zoom in to see culling: "known" stays the same while "rendered" drops.
+**Show all** frames every walker again. If the simulator isn't running, the screen says so.
+Non-members can't join a group's channel; `live.test.ts` proves that.
 
 To run it as a load probe:
 ```
