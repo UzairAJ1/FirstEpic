@@ -13,7 +13,8 @@
     "functions": "supabase functions serve",
     "test": "npm test -w @altair/tests",
     "live-sim": "node tools/live-sim.ts",
-    "outsider-demo": "node tools/outsider-demo.ts"
+    "outsider-demo": "node tools/outsider-demo.ts",
+    "export-ai-logs": "node tools/export-ai-logs.ts"
   },
   "devDependencies": {
     "supabase": "^2.122.0"
