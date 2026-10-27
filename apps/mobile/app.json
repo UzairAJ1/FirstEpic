@@ -2,6 +2,7 @@
   "expo": {
     "name": "Altair Meetups",
     "slug": "altair-meetups",
+    "platforms": ["android", "ios"],
     "scheme": "altair",
     "version": "1.0.0",
     "orientation": "portrait",

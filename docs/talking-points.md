@@ -39,6 +39,13 @@ what I directed, what I caught, and why.
   is deprecated in favour of `onValueChange` and `onDismiss`. Read the installed `.d.ts` because
   the Expo docs page didn't say. (Phase 4)
 
+- **Running on a real phone over Wi-Fi.** Diagnosed step by step: (1) a "Web Bundling failed"
+  error was a red herring, because something requested the web bundle (web is out of scope).
+  Removed web from `app.json` platforms. (2) The phone couldn't reach the laptop: the Node
+  firewall rule had been created while the Wi-Fi was "Public", so it allowed Public only.
+  After switching the network to Private, nothing was allowed. Fixed with one inbound rule
+  for TCP 8081 and 54321 on the Private profile only. (Phase 4)
+
 ## Tests (48, Vitest, real Supabase Auth sessions, real API)
 - The four personas on the seeded Saturday loop: outsider, member without RSVP, attendee, creator.
 - Multi-group: Riley gets exact for Saturday and approximate for Weeknight and Riverside; an RSVP
