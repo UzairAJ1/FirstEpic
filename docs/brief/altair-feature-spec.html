@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Group Meetups Feature Spec</title>
+<style>
+  :root { --bg:#ffffff; --fg:#1d232b; --muted:#5b6673; --line:#d9dee4; --accent:#2f5d8a; --note:#f3f6f9; --flag:#fff6e0; --flagline:#e0b44c; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg:#14181d; --fg:#e4e8ec; --muted:#9aa5b1; --line:#2c333b; --accent:#8db8e3; --note:#1b2128; --flag:#2a2416; --flagline:#a8862f; }
+  }
+  :root[data-theme="dark"] { --bg:#14181d; --fg:#e4e8ec; --muted:#9aa5b1; --line:#2c333b; --accent:#8db8e3; --note:#1b2128; --flag:#2a2416; --flagline:#a8862f; }
+  body { background:var(--bg); color:var(--fg); font:16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; margin:0; padding:32px 16px 64px; }
+  main { max-width:820px; margin:0 auto; }
+  h1 { font-size:1.6rem; margin:0 0 4px; }
+  h2 { font-size:1.15rem; margin:36px 0 8px; color:var(--accent); }
+  h3 { font-size:1rem; margin:20px 0 6px; }
+  .sub { color:var(--muted); margin:0 0 24px; }
+  table { border-collapse:collapse; width:100%; margin:8px 0 12px; font-size:.95rem; }
+  th, td { border:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; }
+  th { background:var(--note); }
+  .wrap { overflow-x:auto; }
+  .note { background:var(--note); border:1px solid var(--line); border-radius:6px; padding:10px 14px; }
+  .open { background:var(--flag); border:1px solid var(--flagline); border-radius:6px; padding:12px 16px; }
+  code { font-family:ui-monospace, Consolas, monospace; font-size:.9em; }
+  li { margin:3px 0; }
+</style>
+</head>
+<body>
+<main>
+<h1>Group Meetups: Feature Spec</h1>
+<p class="sub">First Epic Workflow Challenge - Senior Full-Stack Engineer (ALTAIR). Original First Epic material built for this workflow challenge. All names, places, and coordinates are synthetic.</p>
+
+<div class="note">This spec covers one defined slice of a community app: group meetups, RSVPs, and the meetup map. It is not an invitation to build the whole app. You also receive a schema starter (<code>altair-schema-starter</code>) and seed data (<code>altair-seed-data.sql</code>). If anything here is ambiguous, state your assumption in your note and proceed.</div>
+
+<h2>1. Background</h2>
+<p>Members of the app belong to small neighborhood walking groups. A group is a handful to a few dozen neighbors who walk together. Today members coordinate walks in side channels. This feature lets any member post a meetup to their group, lets other members RSVP, and shows where to meet on a map.</p>
+
+<h2>2. Who is involved</h2>
+<div class="wrap"><table>
+<tr><th>Role</th><th>Who</th></tr>
+<tr><td>Group member</td><td>A user with a row in <code>group_memberships</code> for that group. A user can belong to several groups.</td></tr>
+<tr><td>Creator</td><td>The group member who created a given meetup.</td></tr>
+<tr><td>Attendee</td><td>A group member who has RSVP'd to a given meetup.</td></tr>
+<tr><td>Outsider</td><td>Any signed-in user who is not a member of the meetup's group.</td></tr>
+</table></div>
+<p>Every request comes from a signed-in user. Anonymous access to anything in this feature is out of scope and should be denied. The app signs in with the seeded test accounts (email and password, listed in section 13); no sign-up flow is needed.</p>
+
+<h3>Target platform</h3>
+<ul>
+<li>One platform is enough: iOS or Android, on a simulator, an emulator, a device, or Expo Go. Pick whichever you can run.</li>
+<li>The web client is out of scope for this slice.</li>
+<li>The provided database starter is designed to boot (database up, seed loaded, a seed account signed in) in under 30 minutes once Docker (or a hosted Supabase project) is ready. If it takes you longer, say what slowed you down in your note.</li>
+</ul>
+
+<h2>3. What already exists</h2>
+<p>The schema starter gives you <code>users</code> (one profile per account, including a private home location), <code>groups</code>, and <code>group_memberships</code> (many-to-many). Row-level security is switched on for those three tables with no policies. There are no meetup or RSVP tables, no policies, and no endpoints. The <code>supabase/migrations</code> folder is empty.</p>
+
+<h2>4. Meetups</h2>
+<h3>Fields</h3>
+<div class="wrap"><table>
+<tr><th>Field</th><th>Rule</th></tr>
+<tr><td>Group</td><td>Required. The creator must be a member of it.</td></tr>
+<tr><td>Title</td><td>Required, 1 to 80 characters after trimming.</td></tr>
+<tr><td>Start time</td><td>Required, stored with time zone. Must be in the future when the meetup is created; the server rejects a past or current start time.</td></tr>
+<tr><td>Meeting point</td><td>Required: a place name (1 to 120 characters, for example "North gate, Linden Park") and a latitude and longitude in valid ranges. Meeting points are public places.</td></tr>
+<tr><td>Creator</td><td>Set by the server from the signed-in user, never taken from the request body.</td></tr>
+<tr><td>Status</td><td>Scheduled or cancelled.</td></tr>
+</table></div>
+<h3>Behavior</h3>
+<ul>
+<li>Any member of a group can create a meetup in that group.</li>
+<li>Members of the group can list the group's meetups, soonest first, and open a meetup's detail.</li>
+<li>Only the creator can cancel a meetup. Cancel is required: build it, enforce creator-only on the server, and cover it in your tests.</li>
+</ul>
+<h3>Cancelled meetups</h3>
+<ul>
+<li>A cancelled meetup stays visible to its group, clearly marked as cancelled, in the list and on the detail.</li>
+<li>It accepts no new RSVPs. Existing attendees stay listed, and a member can still withdraw their own RSVP.</li>
+<li>Cancelling is final: a cancelled meetup cannot be reopened.</li>
+<li>Outsiders still see nothing about it.</li>
+</ul>
+<h3>Bonus: editing a meetup (optional)</h3>
+<p>Letting the creator edit a meetup (title, start time, meeting point) is optional and never held against you if skipped. If you build it: creator-only on the server, a changed start time must still be in the future, a cancelled meetup cannot be edited, and cover it in your tests.</p>
+
+<h3>My groups</h3>
+<p>The app needs to know which groups the signed-in member belongs to, to choose a group's meetup list. A read-only "my groups" endpoint or query is expected: it returns only the caller's own groups. Creating or managing groups is out of scope.</p>
+
+<h2>5. RSVPs</h2>
+<ul>
+<li>A member of the meetup's group can RSVP to it, and can cancel their own RSVP.</li>
+<li>One RSVP per member per meetup. RSVPing twice is not an error the user should see; it leaves one RSVP.</li>
+<li>No RSVPs to a cancelled meetup or one that has already started.</li>
+<li>To test a started meetup, your test setup may insert or update one directly as the database owner.</li>
+<li>A member can only RSVP, or cancel an RSVP, for themselves.</li>
+<li>The meetup detail shows the attendee list: the display names of members who have RSVP'd.</li>
+</ul>
+
+<h2>6. Who sees what</h2>
+<div class="wrap"><table>
+<tr><th></th><th>Meetup (title, time, status)</th><th>Attendee list</th><th>Meeting point</th><th>Cancel</th></tr>
+<tr><td>Outsider</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
+<tr><td>Group member, not RSVP'd</td><td>Yes</td><td>Yes</td><td><strong>Open decision (section 7)</strong></td><td>No</td></tr>
+<tr><td>Group member, RSVP'd</td><td>Yes</td><td>Yes</td><td>Exact</td><td>No</td></tr>
+<tr><td>Creator</td><td>Yes</td><td>Yes</td><td>Exact</td><td>Yes</td></tr>
+</table></div>
+<p>Edit (bonus, if built) follows the same rule as cancel: creator only.</p>
+<p>"No" means the data never leaves the server for that user: not in a list, a detail, an attendee query, a map payload, or an error message. Access must be enforced in the database or on the server, never by hiding data in the app after it arrives.</p>
+<p>A member of several groups sees each group's meetups according to their own status in that meetup. An RSVP to one meetup grants nothing for any other meetup.</p>
+
+<h2>7. The open product decision</h2>
+<div class="open">
+<p><strong>Should group members who have not RSVP'd see the exact meeting point, or only an approximate area until they RSVP?</strong></p>
+<p>This is left open on purpose. Make the call, build it, and explain it in your note with a reason grounded in the people using the app. Whichever you choose:</p>
+<ul>
+<li>It is enforced in the database or on the server. If you choose the approximate area, the exact coordinates never reach the app for a member who has not RSVP'd, and neither does anything else that pins down the exact spot.</li>
+<li>Place name: the meeting point's place name (for example "North gate, Linden Park") pins down the spot as precisely as coordinates do. Under the approximate area it is withheld until RSVP, like the exact coordinates; you may show a coarse label of your own instead. Under the exact choice it is shown.</li>
+<li>If you choose the approximate area, it means this: an area computed on the server (or in the database), with a radius of at least 300 meters, whose center is NOT the exact point (for example snapped to a grid cell, or offset by a fixed amount stored per meetup). The exact coordinates never reach the client before the member RSVPs. Within those rules, how you compute it and how large you make it is your call; say why in your note.</li>
+<li>Once a member RSVPs, their view of the meeting point updates to what an attendee sees, without reinstalling or signing out.</li>
+</ul>
+</div>
+
+<h2>8. Home location privacy rule</h2>
+<p>Each user's profile holds a home location (<code>users.home_lat</code>, <code>users.home_lng</code>), collected for features outside this slice. It is private.</p>
+<ul>
+<li>No home location may appear in any response from this feature, for any user: no endpoint, view, function, attendee list, map payload, or error.</li>
+<li>No home location may appear on the map, as a marker, an area, or a starting point.</li>
+<li>Do not build anything in this slice that is derived from a home location (for example, distance from home).</li>
+</ul>
+
+<h2>9. App screens and map</h2>
+<h3>Minimal app UI (required)</h3>
+<ul>
+<li>Sign in with a seed account (Supabase Auth, directly from the app).</li>
+<li>Meetup list for a group, with loading, empty, and error states. Choose the group any simple way (for example a picker fed by the "my groups" query, or the member's first group); a dedicated groups screen is not required.</li>
+<li>Create meetup screen: title, start time, meeting point (place name plus a point, picked on the map or entered as coordinates), with server errors shown to the user.</li>
+<li>Meetup detail: title, time, status, attendee list, the map, an RSVP action, and a cancel action shown only to the creator.</li>
+</ul>
+<p>Withdrawing an RSVP needs its endpoint and a test; a withdraw button in the app is optional. Plain, functional screens are enough; visual polish is not graded. An edit screen belongs to the optional edit bonus.</p>
+<h3>Map</h3>
+<ul>
+<li>On the meetup detail, show the meeting point on a map. Any map option is fine. A path that needs no account and no card exists: <code>react-native-maps</code> with the platform's default map, which runs in Expo Go and on the iOS simulator or an Android emulator.</li>
+<li>Render whatever the server says this member may see: an exact point, or the approximate area you designed.</li>
+<li>After the member RSVPs, the map shows the attendee view.</li>
+<li>Handle loading, empty, and error states.</li>
+</ul>
+
+<h2>10. One shared contract</h2>
+<p>Request and response shapes for creating and cancelling a meetup, listing a group's meetups, listing my groups, and RSVPing or withdrawing an RSVP (and editing, if you build the bonus) live as Zod schemas in one shared place that both the endpoints and the React Native app import.</p>
+<ul>
+<li>Writes: every write (create a meetup, RSVP, withdraw an RSVP, cancel a meetup, and edit if you build the bonus) goes through an endpoint layer that validates it on the server with those shared Zod schemas: a Supabase Edge Function or a small TypeScript server, your choice. Postgres functions are fine behind that layer, called by your endpoint code; a write sent from the app straight to a table or a Postgres function does not meet the requirement, and SQL checks alone do not meet the Zod-validated requirement.</li>
+<li>Reads: lists, my groups, meetup detail, and map data may be queried directly from the app with the member's session under row-level security, or go through your endpoints. Either way, the visibility rules in sections 6 to 8 hold.</li>
+<li>Sign-in: the app signs in with Supabase Auth directly.</li>
+<li>The server rejects invalid input with a clear error, whatever the app does.</li>
+</ul>
+
+<h2>11. Run instructions</h2>
+<p>Include short run instructions with your submission: how a reviewer starts the database, loads the seed, runs the endpoints and the app, and runs your tests, from a clean checkout. A reviewer will follow them as written.</p>
+
+<h2>12. Out of scope</h2>
+<ul>
+<li>Sign-up and account flows beyond signing in with the seed accounts.</li>
+<li>The web client.</li>
+<li>Creating or managing groups and memberships.</li>
+<li>Notifications, chat, comments, recurring meetups, and invitations.</li>
+<li>Live location sharing (that is the optional bonus in the brief, not part of the required slice).</li>
+<li>Editing profiles or home locations.</li>
+</ul>
+
+<h2>13. Seed cast</h2>
+<p>The seed data signs every account in with password <code>altair-fixture-pass</code>.</p>
+<div class="wrap"><table>
+<tr><th>Member</th><th>Groups</th><th>Role in the reference meetups</th></tr>
+<tr><td>Avery Lin</td><td>Maple Street Walkers</td><td>Creator of "Saturday morning loop"</td></tr>
+<tr><td>Jordan Price</td><td>Maple Street Walkers</td><td>RSVP'd to "Saturday morning loop"; creator of "Weeknight short walk"</td></tr>
+<tr><td>Sam Okafor</td><td>Maple Street Walkers</td><td>Member who has not RSVP'd</td></tr>
+<tr><td>Riley Chen</td><td>Both groups</td><td>RSVP'd to "Saturday morning loop" only</td></tr>
+<tr><td>Morgan Ellis</td><td>Riverside Loop Walkers</td><td>Creator of "Riverside sunrise walk"</td></tr>
+<tr><td>Casey Moreno</td><td>Riverside Loop Walkers</td><td>RSVP'd to "Riverside sunrise walk"</td></tr>
+<tr><td>Quinn Adler</td><td>Riverside Loop Walkers</td><td>Member who has not RSVP'd</td></tr>
+<tr><td>Taylor Brooks</td><td>Neither</td><td>Outsider</td></tr>
+</table></div>
+
+<h3>Reference meetups (seed PART 2)</h3>
+<div class="wrap"><table>
+<tr><th>Meetup</th><th>Group</th><th>Start</th><th>Meeting point</th><th>RSVPs</th></tr>
+<tr><td>Saturday morning loop</td><td>Maple Street Walkers</td><td>7 days after the seed is loaded</td><td>North gate, Linden Park (40.012046, -99.984517)</td><td>Jordan Price, Riley Chen</td></tr>
+<tr><td>Weeknight short walk</td><td>Maple Street Walkers</td><td>10 days after the seed is loaded</td><td>Front steps, Elm Avenue Library (40.003318, -99.979762)</td><td>None</td></tr>
+<tr><td>Riverside sunrise walk</td><td>Riverside Loop Walkers</td><td>8 days after the seed is loaded</td><td>Boathouse lot, Riverside Path (39.985239, -100.009683)</td><td>Casey Moreno</td></tr>
+</table></div>
+<p>A spare public place, Fountain plaza, Town Green (39.999134, -99.999461), is there for meetups you create yourself. Your meetup and RSVP tables do not exist until you build them, so seed PART 2 is commented out: adapt it to your schema and load it.</p>
+</main>
+</body>
+</html>
