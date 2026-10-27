@@ -193,6 +193,7 @@ before going higher.
 | App: "Can't reach the server", or Expo Go can't connect | On the phone's browser, open `http://<LAN IP>:8081/status`. If it doesn't load: check the same Wi-Fi, a Private network profile, and the firewall rule below. |
 | Writes fail (create, RSVP, cancel) but lists load; the endpoint returns 503 | The functions container is down, usually after a `functions serve` process exited. Run `npx supabase functions serve` again (step 3). |
 | Live map stays "Connecting…" | Realtime starts a few seconds after the rest of the stack; wait and reopen the screen. |
+| Live map shows "● Live" but no avatars | Positions only exist while the simulator runs: start `npm run live-sim` (step 6) and keep it open. If the panel says walkers are known but none are rendered, tap **Show all**. |
 | `.env` change has no effect | Restart Expo with `--clear`. |
 
 Windows firewall rule for Wi-Fi testing (admin PowerShell; Private networks only):
