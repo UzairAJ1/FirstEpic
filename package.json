@@ -11,7 +11,8 @@
     "db:reset": "supabase db reset",
     "db:stop": "supabase stop",
     "functions": "supabase functions serve",
-    "test": "npm test -w @altair/tests"
+    "test": "npm test -w @altair/tests",
+    "live-sim": "node tools/live-sim.ts"
   },
   "devDependencies": {
     "supabase": "^2.122.0"

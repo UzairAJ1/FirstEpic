@@ -188,6 +188,17 @@ export const Meetup = MeetupDetailsRow.transform((r) => ({
 }));
 export type Meetup = z.output<typeof Meetup>;
 
+// Bonus (b): one position on a group's live channel. Any member can send on
+// that channel, so receivers validate every message and drop the rest.
+export const LivePosition = z.object({
+  id: z.string().min(1).max(64),
+  name: z.string().min(1).max(60),
+  lat: Latitude,
+  lng: Longitude,
+  sentAt: z.number().optional(),
+});
+export type LivePosition = z.infer<typeof LivePosition>;
+
 // Row shape of the public.meetup_attendees view.
 export const Attendee = z
   .object({ user_id: Id, display_name: z.string() })
