@@ -107,6 +107,24 @@ what I directed, what I caught, and why.
 - The create and edit screens share one `MeetupForm` component.
 - 10 tests in `edit.test.ts` (58 total).
 
+## Bonus (b): live map sample (full write-up: docs/live-map-note.md)
+- **Simulated walkers only** (`tools/live-sim.ts`). No device GPS, no home location. That keeps
+  it consistent with the refuse-first item: no real live location without a consent model.
+- **Private channel per group, RLS on `realtime.messages`.** Members only, to receive or send.
+  5 tests: outsider can't join; other-group member can't join; a public channel with the same
+  name hears nothing; malformed topic refused.
+- **Caught:** the broadcast payload was untyped. Any member can post, so the receiver now
+  validates with a shared `LivePosition` Zod schema and caps tracked walkers at 500.
+- **Load test finding:** local Realtime caps the project at 100 events/s. Above that, **send()
+  returns "ok" but nothing arrives**: silent loss, so monitoring must be receiver-side. A 400/s
+  run left the project throttled (429s) for a while, which made the next run look broken too.
+- **My hypothesis was wrong, and a run proved it:** I guessed fan-out deliveries counted toward
+  the cap. 40 walkers over 4 connections (~160 deliveries/s) delivered 100%, so it's ingress.
+- **Flaky test found and fixed:** live tests failed right after `db reset` (Realtime restarts).
+  Global setup now waits for a member's join to succeed, so the README's reset → test works.
+- Interpolation buffer (~1.2 s behind, lerp, ≤0.5 s extrapolation), viewport culling with a
+  known/rendered HUD, 15 fps render loop, pause when unfocused or backgrounded.
+
 ## Assumptions (spec is silent)
 - A member can withdraw an RSVP after the meetup has started.
 - The creator can cancel after the meetup has started.

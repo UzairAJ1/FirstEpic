@@ -28,6 +28,7 @@ function RootStack() {
         <Stack.Screen name="create" options={{ title: "New meetup" }} />
         <Stack.Screen name="meetup/[id]" options={{ title: "Meetup" }} />
         <Stack.Screen name="edit/[id]" options={{ title: "Edit meetup" }} />
+        <Stack.Screen name="live/[groupId]" options={{ title: "Live map (demo)" }} />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" options={{ title: "Sign in" }} />

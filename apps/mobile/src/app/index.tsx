@@ -61,6 +61,11 @@ export default function MeetupList() {
           label="New meetup"
           onPress={() => router.push({ pathname: "/create", params: { groupId: groupId! } })}
         />
+        <Button
+          label="Live map (demo)"
+          variant="secondary"
+          onPress={() => router.push({ pathname: "/live/[groupId]", params: { groupId: groupId! } })}
+        />
       </View>
 
       {meetups.isPending ? (
